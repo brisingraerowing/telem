@@ -20,29 +20,32 @@ function Connection:initialise(state, protocol, side)
     self.id = uid()
     self._protocol = protocol
     self._side = side
-    self._handler = function(m, _) return self:_handle(m, _) end
+    self._handler = function(m, _, c, d) return self:_handle(m, _, c, d) end
     self._state = state
-    if state.d then ecnetd.handlers[state.d] = self._handler end
+    if state.d then ecnetd.addHandler(state.d, self._handler) end
 end
 
 --- @param newState ecnet2.HandshakeState
 function Connection:_setState(newState)
-    if self._state.d then ecnetd.handlers[self._state.d] = nil end
-    if newState.d then ecnetd.handlers[newState.d] = self._handler end
+    if self._state.d then ecnetd.removeHandler(self._state.d) end
+    if newState.d then ecnetd.addHandler(newState.d, self._handler) end
     self._state = newState
 end
 
 --- Handles an incoming packet, modifying the state.
 --- @param packet string
 --- @param _ string
-function Connection:_handle(packet, _)
+--- @param ch integer
+--- @param dist number
+function Connection:_handle(packet, _, ch, dist)
     local newState, msg = self._state.resolve(packet)
     self:_setState(newState)
     if not msg then return end
     local deserialize = self._protocol._interface.deserialize
     local ok, message = pcall(deserialize, msg)
     if ok then
-        os.queueEvent("ecnet2_message", self.id, self._state.pk, message)
+        local addr = addressEncoder.encode(self._state.pk)
+        os.queueEvent("ecnet2_message", self.id, addr, message, ch, dist)
     end
 end
 
@@ -76,7 +79,7 @@ function Connection:receive(timeout)
             return
         elseif event == "ecnet2_message" and p1 == self.id then
             os.cancelTimer(timer)
-            return addressEncoder.encode(p2), p3
+            return p2, p3
         end
     end
 end

@@ -73,26 +73,19 @@ local ZERO = mp.num(0)
 
 --- Reduces a number modulo q.
 --
--- (patched for luamin by @cyberbit 20231121)
---
 -- @tparam {number...} a A number a < 2q as 11 limbs in [0..2²⁵).
 -- @treturn {number...} a mod q as 11 limbs in [0..2²⁴).
 --
 local function reduce(a)
     local c = mp.sub(a, Q)
-    local result
 
     -- Return carry(a) if a < q.
-    if mp.approx(c) < 0 then
-        result = mp.carry(a)
-    else
-        -- c >= q means c - q >= 0.
-        -- Since q < 2²⁸⁸, c < 2q means c - q < q < 2²⁸⁸.
-        -- c's limbs fit in (-2²⁶..2²⁶), since subtraction adds at most one bit.
-        result = mp.carry(c) -- cc < q implies that the carry number is 0.
-    end
+    if mp.approx(c) < 0 then return (mp.carry(a)) end
 
-    return result
+    -- c >= q means c - q >= 0.
+    -- Since q < 2²⁸⁸, c < 2q means c - q < q < 2²⁸⁸.
+    -- c's limbs fit in (-2²⁶..2²⁶), since subtraction adds at most one bit.
+    return (mp.carry(c)) -- cc < q implies that the carry number is 0.
 end
 
 --- Adds two scalars mod q.
